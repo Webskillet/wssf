@@ -1,0 +1,541 @@
+<?php
+
+/**
+ * @file
+ * Custom display of social media feeds
+ */
+
+include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'wssf') . '/tmhOAuth/tmhOAuth.php';
+
+/**
+ * Implements hook_menu().
+ */
+function wssf_menu() {
+  $items = array();
+
+  $items['admin/config/media/ws-social-feeds'] = array(
+    'title' => 'Configure Social Feeds',
+	'description' => 'Configure the WS Social Feeds blocks',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('wssf_config'),
+    'access arguments' => array('access administration pages'),
+    'file' => 'wssf.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+
+}
+
+/**
+ * Display help and module information
+ * @param path which path of the site we're displaying help
+ * @param arg array that holds the current path as would be returned from arg() function
+ * @return help text for the path
+ */
+function wssf_help($path, $arg) {
+  $output = '';  //declare your output variable
+  switch ($path) {
+    case "admin/help#wssf":
+      $output = '<p>'.  t("Provides blocks for displaying custom-themed Twitter, Facebook, Pinterest posts") .'</p>';
+      break;
+  }
+  return $output;
+} // function wssf_help
+
+
+/**
+* Implementation of hook_block_info
+*/
+
+function wssf_block_info() {
+    $blocks = array();
+	for ($i=0;$i<4;$i++) {
+		if (variable_get('wssf_enabled_block_'.$i, FALSE)) {
+			$title = variable_get('wssf_title_block_'.$i,'Block '.$i);
+			if (!$title) { $title = "Block $i"; }
+			$blocks[$i]["info"] = t('WS Social Feeds').': '.t($title);
+			$blocks[$i]["cache"] = DRUPAL_CACHE_CUSTOM;
+		}
+	}
+	return $blocks;	
+}
+
+/**
+ * Implementation of hook_block_vew().
+ * @param integer $delta code to identify the block
+*/
+function wssf_block_view($delta = 0, $edit = array()) {
+
+	$block['subject'] = variable_get('wssf_title_block_'.$delta,'Social Media');
+	$block['content'] = '';
+
+	drupal_add_css(drupal_get_path('module', 'wssf').'/wssf.css');
+
+	$cache = cache_get('wssf_block_'.$delta);
+	$cache_mins = variable_get('wssf_cache_block_'.$delta,15);
+	$block['content'] = ((time() - $cache->created) < ($cache_mins * 60)) ? $cache->data : '';
+
+	if (!$block['content'] || ($delta == 5)) { // $delta == is for development & debugging
+
+		$cache_results = true;
+
+		$count = variable_get('wssf_posts_block_'.$delta, 3);
+		switch($delta) {
+
+// twitter
+case 0:
+	$tweets_html = '';
+
+	// $tweets_html .= '<li><pre>'.print_r($cache,1).'</pre></li>'; 
+	$twitter_id = variable_get('wssf_id_block_0','');
+	$tmhOAuth = new tmhOAuth(array(
+	  'consumer_key'    => variable_get('wssf_consumer_key', ''),
+	  'consumer_secret' => variable_get('wssf_consumer_secret', ''),
+	  'user_token'      => variable_get('wssf_user_token', ''),
+	  'user_secret'     => variable_get('wssf_user_secret', ''),
+	));
+	$code = $tmhOAuth->request('GET', $tmhOAuth->url('1.1/statuses/user_timeline'), array('screen_name' => $twitter_id, 'count' => $count, 'include_rts' => true));
+	$response = $tmhOAuth->response;
+	$json = $response['response'];
+
+	$tweets = json_decode($json);
+
+	if ($tweets->errors) {
+		$block['content'] = isset($cache->data) ? $cache->data : array();
+		$cache_results = false;
+		break;
+	}
+
+	foreach($tweets as $tweet) {
+		$vars = _wssf_tweet_to_vars($tweet);
+		$tweets_html .= theme('wssf_twitter_tweet', $vars);
+	}
+	$block['content'] = array(
+		'#theme' => 'wssf_twitter_block',
+		'#type' => 'markup',
+		'#tweets' => $tweets_html,
+	);
+break; // twitter
+
+// facebook
+case 1:
+	$fb_html = '';
+ 
+	$fb_page_id = variable_get('wssf_id_block_1','');
+
+	$header = array();
+	$header[] = 'Accept: */*';
+	$header[] = 'Cache-Control: max-age=0';
+	$header[] = 'Connection: keep-alive';
+	$header[] = 'Keep-Alive: 300';
+	$header[] = 'Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7';
+	$header[] = 'Accept-Language: en-us,en;q=0.5';
+	$header[] = 'Pragma: ';
+
+	$url = "http://www.facebook.com/feeds/page.php?format=json&id=$fb_page_id";
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US; rv:1.9.0.11) Gecko/2009060215 Firefox/3.0.11 (.NET CLR 3.5.30729)');
+	curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+	curl_setopt($ch, CURLOPT_AUTOREFERER, true); 
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	// curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+	curl_setopt($ch, CURLOPT_ENCODING, '');
+	curl_setopt($ch, CURLOPT_TIMEOUT, 500);
+	curl_setopt($ch, CURLOPT_URL, $url);
+	$json = curl_exec($ch);
+	curl_close($ch);
+
+	$feed = json_decode($json);
+
+	// $debug .= "\n\n".print_r($feed,1)."\n\n";
+
+	$posts = (isset($feed->entries) && is_array($feed->entries)) ? $feed->entries : array();
+	$ct = ($count < count($posts)) ? $count : count($posts);
+
+	for ($i=0;$i<$ct;$i++) {
+		$vars = _wssf_fb_post_to_vars($posts[$i]);
+		$fb_html .= theme('wssf_fb_post',$vars);
+	}
+	$block['content'] = array(
+		'#theme' => 'wssf_fb_block',
+		'#type' => 'markup',
+		'#posts' => $fb_html,
+		'#morelink' => "http://www.facebook.com/profile.php?id=$fb_page_id",
+		'#morelink_text' => variable_get('wssf_morelink_text_block_1','More on Facebook'),
+	);
+
+	// mail ('jk@webskillet.com','WSSF FB Block debug',$debug,"From: noreply@webskillet.com\r\n");
+
+break; // facebook
+
+// pinterest
+case 2:
+
+	$pins_html = '';
+ 
+	$pinterest_id = variable_get('wssf_id_block_2','');
+
+	$url = "http://www.pinterest.com/$pinterest_id/pins/";
+
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($ch, CURLOPT_TIMEOUT, 1000);
+	curl_setopt($ch, CURLOPT_URL, $url);
+	$html = curl_exec($ch);
+	curl_close($ch);
+
+	preg_match_all('/<div class="pinHolder">\s*<a href="(\/pin\/[0-9]+\/)"/', $html, $link_matches);
+	preg_match_all('/<img src="([^"]+)"\s*class="pinImg/', $html, $img_matches);
+	preg_match_all('/<p class="pinDescription">(.+?)<\/p>/', $html, $desc_matches);
+
+	// for debug
+	$debug = "link_matches:\n\n".print_r($link_matches,1)."\n\nimg_matches:\n\n".print_r($img_matches,1)."\n\ndesc_matches:\n\n".print_r($desc_matches,1);
+	// mail('jk@webskillet.com','preg_match',$debug,"From: noreply@webskillet.com\r\n");
+
+	if (!$html || !count($link_matches) || !count($link_matches[1]) || !count($img_matches) || !count($img_matches[1]) || !count($desc_matches) || !count($desc_matches[1])) {
+		$block['content'] = isset($cache->data) ? $cache->data : array();
+		$cache_results = false;
+		break;
+	}
+
+	for($i=0;$i<$count;$i++) {
+		$vars['link'] = isset($link_matches[1][$i]) ? 'http://www.pinterest.com'.$link_matches[1][$i] : '';
+		$vars['image_small'] = isset($img_matches[1][$i]) ? $img_matches[1][$i] : '';
+		$vars['image_large'] = str_replace('/236x/','/736x/',$vars['image_small']);
+		$vars['description'] = isset($desc_matches[1][$i]) ? $desc_matches[1][$i] : '';
+		$vars['description_plain'] = strip_tags($vars['description']);
+		$pins_html .= theme('wssf_pinterest_pin', $vars);
+	}
+
+	$pint_html .= '<!-- got here -->';
+
+	$block['content'] = array(
+		'#theme' => 'wssf_pinterest_block',
+		'#type' => 'markup',
+		'#pins' => $pins_html,
+		'#morelink' => "http://www.pinterest.com/$pinterest_id",
+		'#morelink_text' => variable_get('wssf_morelink_text_block_2','More on Pinterest'),
+	);
+
+break; // pinterest
+
+// mixed (FB + Twitter)
+case 3:
+
+	$min_fb = variable_get('wssf_mixed_min_fb', 1);
+	$twitterCount = $count - $min_fb;
+	$mixed_posts = array();
+
+	// get tweets
+	$twitter_id = variable_get('wssf_id_block_0','');
+	$tmhOAuth = new tmhOAuth(array(
+	  'consumer_key'    => variable_get('wssf_consumer_key', ''),
+	  'consumer_secret' => variable_get('wssf_consumer_secret', ''),
+	  'user_token'      => variable_get('wssf_user_token', ''),
+	  'user_secret'     => variable_get('wssf_user_secret', ''),
+	));
+	$code = $tmhOAuth->request('GET', $tmhOAuth->url('1.1/statuses/user_timeline'), array('screen_name' => $twitter_id, 'count' => $twitterCount, 'include_rts' => true));
+	$response = $tmhOAuth->response;
+	$json = $response['response'];
+
+	$tweets = json_decode($json);
+
+	if ($tweets->errors) {
+		$block['content'] = isset($cache->data) ? $cache->data : array();
+		$cache_results = false;
+		break;
+	}
+
+	foreach($tweets as $tweet) {
+		$vars = _wssf_tweet_to_vars($tweet);
+		$mixed_posts[] = array('timestamp' => $vars['timestamp_raw'], 'type' => 'tweet', 'vars' => $vars);
+	}
+
+	// get FB posts
+	$fb_page_id = variable_get('wssf_id_block_1','');
+
+	$header = array();
+	$header[] = 'Accept: */*';
+	$header[] = 'Cache-Control: max-age=0';
+	$header[] = 'Connection: keep-alive';
+	$header[] = 'Keep-Alive: 300';
+	$header[] = 'Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7';
+	$header[] = 'Accept-Language: en-us,en;q=0.5';
+	$header[] = 'Pragma: ';
+
+	$url = "http://www.facebook.com/feeds/page.php?format=json&id=$fb_page_id";
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US; rv:1.9.0.11) Gecko/2009060215 Firefox/3.0.11 (.NET CLR 3.5.30729)');
+	curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+	curl_setopt($ch, CURLOPT_AUTOREFERER, true); 
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	// curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+	curl_setopt($ch, CURLOPT_ENCODING, '');
+	curl_setopt($ch, CURLOPT_TIMEOUT, 500);
+	curl_setopt($ch, CURLOPT_URL, $url);
+	$json = curl_exec($ch);
+	curl_close($ch);
+
+	$feed = json_decode($json);
+
+	// $debug .= "\n\n".print_r($feed,1)."\n\n";
+
+	$posts = (isset($feed->entries) && is_array($feed->entries)) ? $feed->entries : array();
+	$ct = ($count < count($posts)) ? $count : count($posts);
+
+	for ($i=0;$i<$ct;$i++) {
+		$fbvars = _wssf_fb_post_to_vars($posts[$i]);
+		$mixed_posts[] = array('timestamp' => $fbvars['timestamp_raw'], 'type' => 'fb', 'vars' => $fbvars);
+	}
+
+	// sort our mixed posts
+	foreach ($mixed_posts as $key => $row) {
+		$timestamps[$key] = $row['timestamp'];
+	}
+	array_multisort($timestamps, SORT_DESC, $mixed_posts);
+
+	// $debug .= "\n\nmixed_posts after sorting:\n\n".print_r($mixed_posts,1)."\n\n";
+
+	$mixed_html = '';
+	for($i=0;$i<$count;$i++) {
+		$p = $mixed_posts[$i];
+		// $debug .= '$'."p[$i]:\n\n".print_r($p,1)."\n\n";
+		if ($p['type'] == 'tweet') {
+			$mixed_html .= theme('wssf_mixed_tweet', $p['vars']);
+		} elseif ($p['type'] == 'fb') {
+			$mixed_html .= theme('wssf_mixed_post', $p['vars']);
+		}
+	}
+
+	$block['content'] = array(
+		'#theme' => 'wssf_mixed_block',
+		'#type' => 'markup',
+		'#posts' => $mixed_html,
+	);
+
+	// mail('jk@webskillet.com','WSSF Mixed Block Debug',$debug,"From: noreply@webskillet.com\r\n");
+
+break;
+
+		} // end switch
+		if ($cache_results) { cache_set('wssf_block_'.$delta, $block['content']); }
+	} // end if (for cacheing)
+
+	return $block;
+
+} // function wssf_block
+
+/**
+* Implementation of hook_theme
+*/
+
+function wssf_theme($existing, $type, $theme, $path) {
+  return array(
+	'wssf_twitter_block' => array(
+		'variables' => array(
+			'tweets' => NULL,
+		),
+		'template' => 'wssf-twitter-block'
+	),
+	'wssf_twitter_tweet' => array(
+		'variables' => array(
+			'user' => NULL,
+			'name' => NULL,
+			'avatar' => NULL,
+			'tweet_id' => NULL,
+			'retweet' => NULL,
+			'timestamp' => NULL,
+			'tweet' => NULL,
+			'tweet_plain' => NULL,
+		),
+		'template' => 'wssf-twitter-tweet'
+	),
+	'wssf_fb_block' => array(
+		'variables' => array(
+			'posts' => NULL,
+			'morelink' => NULL,
+			'morelink_text' => NULL,
+		),
+		'template' => 'wssf-fb-block'
+	),
+	'wssf_fb_post' => array(
+		'variables' => array(
+			'link' => NULL,
+			'title' => NULL,
+			'title_plain' => NULL,
+			'content' => NULL,
+			'content_plain' => NULL,
+			'timestamp' => NULL,
+		),
+		'template' => 'wssf-fb-post'
+	),
+	'wssf_pinterest_block' => array(
+		'variables' => array(
+			'pins' => NULL,
+			'morelink' => NULL,
+			'morelink_text' => NULL,
+		),
+		'template' => 'wssf-pinterest-block'
+	),
+	'wssf_pinterest_pin' => array(
+		'variables' => array(
+			'link' => NULL,
+			'image_small' => NULL,
+			'image_large' => NULL,
+			'description' => NULL,
+			'description_plain' => NULL,
+		),
+		'template' => 'wssf-pinterest-pin'
+	),
+	'wssf_mixed_block' => array(
+		'variables' => array(
+			'posts' => NULL,
+		),
+		'template' => 'wssf-mixed-block'
+	),
+	'wssf_mixed_tweet' => array(
+		'variables' => array(
+			'user' => NULL,
+			'name' => NULL,
+			'avatar' => NULL,
+			'tweet_id' => NULL,
+			'retweet' => NULL,
+			'timestamp' => NULL,
+			'tweet' => NULL,
+			'tweet_plain' => NULL,
+		),
+		'template' => 'wssf-mixed-tweet'
+	),
+	'wssf_mixed_post' => array(
+		'variables' => array(
+			'link' => NULL,
+			'title' => NULL,
+			'title_plain' => NULL,
+			'content' => NULL,
+			'content_plain' => NULL,
+			'timestamp' => NULL,
+		),
+		'template' => 'wssf-mixed-post'
+	),
+  );
+}
+
+/**
+ * Helper functions
+ */
+
+function _wssf_sort($a,$b){
+    return strlen($b->screen_name)-strlen($a->screen_name);
+}
+
+function _wssf_tweet_to_vars($tweet) {
+
+		$rt = '';
+		if (isset($tweet->retweeted_status)) {
+			$rt = sprintf('<div class="wssf-tweet-retweet">Retweeted by <a href="https://twitter.com/%s">%s</a></div>',
+				$tweet->user->name, $tweet->user->screen_name);
+			$tweet = $tweet->retweeted_status;
+		}
+
+		// get general data
+		$vars = array(
+			'user' => $tweet->user->screen_name,
+			'name' => $tweet->user->name,
+			'avatar' => $tweet->user->profile_image_url,
+			'tweet_id' => $tweet->id,
+			'retweet' => $rt
+		);
+
+		// create timestamp
+		$timestamp = strtotime($tweet->created_at);
+		$twitter_date_format = variable_get('wssf_date_format_block_0','');
+		if ($twitter_date_format) {
+			$time = date($twitter_date_format,$timestamp);
+		} else {
+			$ago = time() - $timestamp;
+			if ($ago < 3600) {
+				$ago = ceil($ago / 60);
+				$time = $ago."m";
+			} elseif ($ago < 86400) {
+				$ago = ceil($ago / 3600);
+				$time = $ago."h";
+			} else {
+				$time = date("j M",$timestamp);
+			}
+		}
+		$vars['timestamp'] = $time;
+		$vars['timestamp_raw'] = $timestamp;
+
+		// contruct the tweet itself
+		$tweet_html = $tweet->text;
+		foreach ($tweet->entities->hashtags as $hashtag) {
+			$tag = "#".$hashtag->text;
+			$tag_link = sprintf('<a href="https://twitter.com/search?q=%s">%s</a>', urlencode($tag), $tag);
+			$tweet_html = str_ireplace($tag, $tag_link, $tweet_html);
+		}
+		foreach ($tweet->entities->urls as $url) {
+			$tco = $url->url;
+			$url_link = sprintf('<a href="%s">%s</a>', $tco, $url->display_url);
+			$tweet_html = str_ireplace($tco, $url_link, $tweet_html);
+		}
+
+		$user_mentions = $tweet->entities->user_mentions;
+		usort($user_mentions,'_wssf_sort');
+
+		foreach ($user_mentions as $user_mention) {
+			$screen_name = '@'.$user_mention->screen_name;
+			$user_link = sprintf('<a href="https://twitter.com/%s" title="%s">%s</a>', $user_mention->screen_name,
+				$user_mention->name, $screen_name);
+			// $tweet_html = str_ireplace($screen_name, $user_link, $tweet_html);
+			$tweet_html = preg_replace("/(^|[^>])($screen_name)($|[^<])/i", "$1$user_link$3", $tweet_html);
+		}
+		$vars['tweet'] = $tweet_html;
+		$vars['tweet_plain'] = strip_tags($tweet_html);
+
+		// mail('jk@webskillet.com','user mentions',print_r($vars,1)."\n\n".print_r($user_mentions,1),"From: noreply@domesticworkers.org\r\n");
+
+		return $vars;
+}
+
+function _wssf_fb_post_to_vars($post) {
+		$link = $post->alternate;
+		$content = $post->content;
+
+		// clean up content links
+		preg_match_all('/<a[^>]+>/',$content,$matches);
+		$links = $matches[0];
+		foreach ($links as $l) {
+			$xmlstr = "<?xml version='1.0'?>
+<document>
+  $l</a>
+</document>";
+			$xml = simplexml_load_string($xmlstr);
+			$href = isset($xml->a->attributes()->href) ? (string) $xml->a->attributes()->href : '';
+			$onmouseover = isset($xml->a->attributes()->onmouseover) ? (string) $xml->a->attributes()->onmouseover : '';
+			if ($onmouseover) {
+				if (preg_match('/"(http[^"]+)"/',$onmouseover,$match)) {
+					$href = str_replace('\/','/',$match[1]);
+				}
+			}
+			if (substr($href,0,1) == '/') { $href = 'http://www.facebook.com'.$href; }
+			$content = str_replace($l,"<a href=\"$href\">",$content);
+		}
+
+		$title = $post->title;
+		if (substr($title,-3) == '...') {
+			$content_lines = preg_split('/<br ?\/?>/',$content);
+			$title = $content_lines[0] ? $content_lines[0] : $title;
+		}
+		$timestamp = strtotime($post->published);
+		$fb_date_format = variable_get('wssf_date_format_block_1','F j');
+		$time = date($fb_date_format,$timestamp);
+		$fbvars['link'] = $link;
+		$fbvars['title'] = $title;
+		$fbvars['title_plain'] = strip_tags($title);
+		$fbvars['content'] = $content;
+		$fbvars['content_plain'] = strip_tags($content,'<p><br>');
+		$fbvars['timestamp'] = $time;
+		$fbvars['timestamp_raw'] = $timestamp;
+		return $fbvars;
+}

@@ -1,0 +1,162 @@
+<?php
+
+/**
+ * @file
+ * defines database schema
+ */
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function om_wssf_uninstall() {
+  variable_del('wssf_consumer_key');
+  variable_del('wssf_consumer_secret');
+  variable_del('wssf_user_token');
+  variable_del('wssf_user_secret');
+  variable_del('wssf_enabled_block_0');
+  variable_del('wssf_title_block_0');
+  variable_del('wssf_id_block_0');
+  variable_del('wssf_posts_block_0');
+  variable_del('wssf_date_format_block_0');
+  variable_del('wssf_cache_block_0');
+  variable_del('wssf_enabled_block_1');
+  variable_del('wssf_title_block_1');
+  variable_del('wssf_id_block_1');
+  variable_del('wssf_posts_block_1');
+  variable_del('wssf_date_format_block_1');
+  variable_del('wssf_morelink_text_block_1');
+  variable_del('wssf_cache_block_1');
+  variable_del('wssf_enabled_block_2');
+  variable_del('wssf_title_block_2');
+  variable_del('wssf_id_block_2');
+  variable_del('wssf_posts_block_2');
+  variable_del('wssf_cache_block_2');
+  variable_del('wssf_morelink_text_block_2');
+  variable_del('wssf_enabled_block_3');
+  variable_del('wssf_title_block_3');
+  variable_del('wssf_mixed_min_fb');
+  variable_del('wssf_posts_block_3');
+  variable_del('wssf_cache_block_3');
+}
+
+/**
+ * Implements hook_schema().
+ */
+
+/*
+
+function wssf_schema() {
+
+  $schema['wssf_cache'] = array(
+    'description' => 'Cache for WS Social Feeds',
+    'fields' => array(
+      'cid' => array(
+        'description' => 'Unique identifier for cache',
+        'type' => 'serial',
+        'size' => 'big',
+        'not null' => TRUE,
+      ),
+      'nid' => array(
+        'description' => 'nid of webform node',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'civi_enabled' => array(
+        'description' => 'Enable CiviCRM integration',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+      'civi_rest_url' => array(
+        'description' => 'URL that points to CiviCRM REST implementation',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'civi_key' => array(
+        'description' => 'CiviCRM key',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'civi_api_key' => array(
+        'description' => 'CiviCRM api key',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'civi_field_mapping' => array(
+        'description' => 'CiviCRM field mapping',
+        'type' => 'text',
+        'not null' => TRUE,
+      ),
+      'civi_event_id' => array(
+        'description' => 'CiviCRM event id',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'salsa_enabled' => array(
+        'description' => 'Enable Salsa integration',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+      ),
+      'salsa_node_url' => array(
+        'description' => 'URL to access Salsa API',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'salsa_organization_key' => array(
+        'description' => 'Salsa organization key',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'salsa_chapter_key' => array(
+        'description' => 'Salsa chapter key',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'salsa_account_email' => array(
+        'description' => 'Email of Salsa user account',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'salsa_password' => array(
+        'description' => 'Password of Salsa user account',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'salsa_field_mapping' => array(
+        'description' => 'Salsa field mapping',
+        'type' => 'text',
+        'not null' => TRUE,
+      ),
+      'salsa_group_id' => array(
+        'description' => 'Salsa group id',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'salsa_tag' => array(
+        'description' => 'Salsa tags',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('oid'),
+    'unique keys' => array(
+      'oid' => array('oid')
+    ),
+    'indexes' => array(
+      'nid' => array('nid'),
+    ),
+  );
+
+  return $schema;
+
+}
+
+*/
