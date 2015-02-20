@@ -23,25 +23,25 @@ function wssf_config($form, &$form_state) {
 
 	$form['twitter_auth']['wssf_consumer_key'] = array(
 		'#type' => 'textfield',
-		'#title' => t('Twitter App API Key'),
+		'#title' => t('Twitter App Consumer Key'),
 		'#default_value' => variable_get('wssf_consumer_key', ''),
 	);
 
 	$form['twitter_auth']['wssf_consumer_secret'] = array(
 		'#type' => 'textfield',
-		'#title' => t('Twitter App API Secret'),
+		'#title' => t('Twitter App Consumer Secret'),
 		'#default_value' => variable_get('wssf_consumer_secret', ''),
 	);
 
 	$form['twitter_auth']['wssf_user_token'] = array(
 		'#type' => 'textfield',
-		'#title' => t('Twitter App Access Token'),
+		'#title' => t('Twitter App User Token'),
 		'#default_value' => variable_get('wssf_user_token', ''),
 	);
 
 	$form['twitter_auth']['wssf_user_secret'] = array(
 		'#type' => 'textfield',
-		'#title' => t('Twitter App Access Token Secret'),
+		'#title' => t('Twitter App User Secret'),
 		'#default_value' => variable_get('wssf_user_secret', ''),
 	);
 

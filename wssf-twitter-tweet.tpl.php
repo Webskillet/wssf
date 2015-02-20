@@ -19,7 +19,7 @@
 		<span class="wssf-tweet-author-name"><a href="https://twitter.com/<?php print $user; ?>"><?php print $name; ?></a></span>
 		<span class="wssf-tweet-author-user"><a href="https://twitter.com/<?php print $user; ?>">@<?php print $user; ?></a></span>
 	</div>
-	<div class="wssf-tweet-timestamp"><a href="https://twitter.com/<?php print $user; ?>/statuses/<?php print $tweet_id; ?>"><?php print $timestamp; ?></a></div>
+	<div class="wssf-tweet-timestamp"><a href="https://twitter.com/<?php print $user; ?>/statuses/<?php print $id; ?>"><?php print $timestamp; ?></a></div>
 	<div class="wssf-tweet-tweet"><?php print $tweet; ?></div>
 	<?php print $retweet; ?>
 	<ul class="wssf-tweet-actions">
