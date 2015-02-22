@@ -529,6 +529,28 @@ function _wssf_fb_xml_to_vars($item) {
 		$content = str_replace($l,"<a href=\"$href\">",$content);
 	}
 
+	// replace image srcs with full-size images
+	preg_match_all('/<img[^>]+>/',$content,$matches);
+	$imgs = $matches[0];
+	foreach ($imgs as $img) {
+		$xmlstr = "<?xml version='1.0'?>
+<document>
+  $img
+</document>";
+		$xml = simplexml_load_string($xmlstr);
+		$debug .= "\n\n".$xmlstr;
+		$debug .= "\n\n".print_r($xml,1)."\n\n";
+		$src = isset($xml->img->attributes()->src) ? (string) $xml->img->attributes()->src : '';
+		$debug .= "src: $src\n";
+		preg_match('/p130x130\/[0-9]+_([0-9]+)_/', $src, $imgmatches);
+		$debug .= "matches:\n\n".print_r($imgmatches,1)."\n\n";
+		if (isset($imgmatches[1])) {
+			$debug .= "https://graph.facebook.com/{$imgmatches[1]}/picture\n";
+			$content = str_replace($img,"<img src=\"https://graph.facebook.com/{$imgmatches[1]}/picture\" style=\"max-width: 100%; height: auto;\">",$content);
+		}
+	}
+	// mail('jk@webskillet.com','FB img debug',$debug,"From: noreply@webskillet.com\r\n");
+
 	$fb_date_format = variable_get('wssf_date_format_block_1','F j');
 	$time = date($fb_date_format,$timestamp);
 	$fbvars['link'] = $link;
