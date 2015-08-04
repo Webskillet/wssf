@@ -12,7 +12,6 @@ function wssf_config($form, &$form_state) {
 
 	$form = array();
 
-
 	/* Twitter authorization variables */
 	$form['twitter_auth'] = array(
 		'#type' => 'fieldset',
@@ -43,6 +42,26 @@ function wssf_config($form, &$form_state) {
 		'#type' => 'textfield',
 		'#title' => t('Twitter App User Secret'),
 		'#default_value' => variable_get('wssf_user_secret', ''),
+	);
+
+	/* Facebook authorization variables */
+	$form['fb_auth'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Facebook App Settings'),
+		'#collapsible' => TRUE,
+		'#collapsed' => FALSE,
+	);
+
+	$form['fb_auth']['wssf_fb_app_id'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Facebook App ID'),
+		'#default_value' => variable_get('wssf_fb_app_id', ''),
+	);
+
+	$form['fb_auth']['wssf_fb_app_secret'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Facebook App Secret'),
+		'#default_value' => variable_get('wssf_fb_app_secret', ''),
 	);
 
 	/* Twitter block */
@@ -153,56 +172,6 @@ function wssf_config($form, &$form_state) {
 		'#required' => TRUE,
 	);
 
-	/* Pinterest block */
-	$form['pinterest'] = array(
-		'#type' => 'fieldset',
-		'#title' => t('Pinterest Block'),
-		'#collapsible' => TRUE,
-		'#collapsed' => (variable_get('wssf_enabled_block_2', 0) == 0),
-	);
-
-	$form['pinterest']['wssf_enabled_block_2'] = array(
-		'#type' => 'checkbox',
-		'#title' => t('Enabled'),
-		'#default_value' => variable_get('wssf_enabled_block_2', 0),
-	);
-
-	$form['pinterest']['wssf_title_block_2'] = array(
-		'#type' => 'textfield',
-		'#title' => t('Block Title'),
-		'#default_value' => variable_get('wssf_title_block_2', 'Pinterest'),
-	);
-
-	$form['pinterest']['wssf_id_block_2'] = array(
-		'#type' => 'textfield',
-		'#title' => t('Pinterest Username'),
-		'#default_value' => variable_get('wssf_id_block_2', ''),
-	);
-
-	$form['pinterest']['wssf_posts_block_2'] = array(
-		'#type' => 'textfield',
-		'#title' => t('Number of Pins'),
-		'#default_value' => variable_get('wssf_posts_block_2', 3),
-		'#size' => 2,
-		'#maxlength' => 2,
-		'#required' => TRUE,
-	);
-
-	$form['pinterest']['wssf_morelink_text_block_2'] = array(
-		'#type' => 'textfield',
-		'#title' => t('Text for link to Pinterest page'),
-		'#default_value' => variable_get('wssf_morelink_text_block_2', t('More on Pinterest')),
-	);
-
-	$form['pinterest']['wssf_cache_block_2'] = array(
-		'#type' => 'textfield',
-		'#title' => t('Cache timing (in minutes)'),
-		'#default_value' => variable_get('wssf_cache_block_2', 60),
-		'#size' => 2,
-		'#maxlength' => 2,
-		'#required' => TRUE,
-	);
-
 	/* Mixed Twitter/FB block */
 	$form['mixed'] = array(
 		'#type' => 'fieldset',
@@ -259,6 +228,7 @@ function wssf_config_validate($form, &$form_state) {
 
 	// number-of-post settings must be numbers
 	for($i=0;$i<4;$i++) {
+		if ($i == 2) { continue; }
 		$posts = $values['wssf_posts_block_'.$i];
 		if ((!is_numeric($posts) || intval($posts) != $posts)) {
 			form_set_error('wssf_posts_block_'.$i,t('Number of posts must be an integer.'));
@@ -270,7 +240,7 @@ function wssf_config_validate($form, &$form_state) {
 	}
 
 	// all blocks require id's to be set
-	for($i=0;$i<3;$i++) {
+	for($i=0;$i<2;$i++) {
 		if ($values['wssf_enabled_block_'.$i] && !$values['wssf_id_block_'.$i]) {
 			form_set_error('wssf_id_block_'.$i,t('Must provide username or id for all enabled blocks'));
 		}
@@ -287,6 +257,14 @@ function wssf_config_validate($form, &$form_state) {
 		$twitter_auth_fields = array('wssf_consumer_key','wssf_consumer_secret','wssf_user_token','wssf_user_secret');
 		foreach ($twitter_auth_fields as $f) {
 			if (!$values[$f]) { form_set_error($f,t('Twitter and Mixed Blocks cannot be enabled unless Twitter App authorization information is entered.')); }
+		}
+	}
+
+	// if FB or mixed blocks are enabled, FB auth has to be entered
+	if ($values['wssf_enabled_block_1'] || $values['wssf_enabled_block_3']) {
+		$fb_auth_fields = array('wssf_fb_app_id','wssf_fb_app_secret');
+		foreach ($fb_auth_fields as $f) {
+			if (!$values[$f]) { form_set_error($f,t('Facebook and Mixed Blocks cannot be enabled unless Facebook App authorization information is entered.')); }
 		}
 	}
 }

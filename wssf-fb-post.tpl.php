@@ -12,9 +12,5 @@
  */
 ?>
 <li class="wssf-fb-post">
-	<?php if (strpos($title,'<a href') === false): ?>
-		<a href="<?php print $link; ?>"><?php print $title_plain; ?></a>
-	<?php else: ?>
-		<?php print $title; ?>
-	<?php endif; ?>
+	<?php print $content; ?>
 </li>

@@ -25,12 +25,7 @@
 
 .block ul.wssf-fb-posts { margin: 0; padding: 0; }
 .wssf-fb-post { font-size: 1em; list-style: none outside none; padding: 0; position: relative; margin: 0 0 1em; }
-
-/* pinterest block */
-
-.block ul.wssf-pins { margin: 0; padding: 0; }
-.wssf-pin { font-size: 1em; list-style: none outside none; padding: 0; position: relative; margin: 0 0 3em; }
-.wssf-pin img { max-width: 100%; display: block; margin: 0 auto; }
+.wssf-fb-post img { max-width: 100%; height: auto; }
 
 /* mixed block */
 
