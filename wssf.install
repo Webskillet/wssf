@@ -36,7 +36,7 @@ function wssf_uninstall() {
 }
 
 /**
- * Implementation of hook_update_N().
+ * 7.x-2.0-beta Remove system variables related to Pinterest block
  */
 function wssf_update_7200() {
 
@@ -47,5 +47,6 @@ function wssf_update_7200() {
   variable_del('wssf_posts_block_2');
   variable_del('wssf_cache_block_2');
   variable_del('wssf_morelink_text_block_2');
+  return 'Removed system variables related to Pinterest block';
 }
 
