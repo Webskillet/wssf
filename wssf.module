@@ -74,13 +74,11 @@ function wssf_block_view($delta = 0, $edit = array()) {
 
 	drupal_add_css(drupal_get_path('module', 'wssf').'/wssf.css');
 
-/*
 	$cache = cache_get('wssf_block_'.$delta);
 	$cache_mins = variable_get('wssf_cache_block_'.$delta,15);
 	if ($cache) {
 		$block['content'] = ((time() - $cache->created) < ($cache_mins * 60)) ? $cache->data : '';
 	}
-*/
 
 	if (!$block['content'] || ($delta == 5)) { // $delta == is for development & debugging
 
@@ -505,8 +503,8 @@ function _wssf_fb_post_to_vars($post) {
 			foreach ($hashtags as $hashtag) {
 				$tag = strtolower(substr($hashtag,1));
 				$hashtag_link = '<a href="https://www.facebook.com/hashtag/'.$tag.'">'.$hashtag.'</a>';
+				$message .= ' ';
 				$message = preg_replace("/(^|[^>])($hashtag)($|[^<])!/", "$1$hashtag_link$3", $message);
-				// $message = str_replace($hashtag, $hashtag_link, $message);
 			}
 		}
 
@@ -528,7 +526,7 @@ function _wssf_fb_post_to_vars($post) {
 
 	if (isset($post['link'])) {
 		if (!$linkable_content) { $linkable_content = $post['link']; }
-		$content .= '<a class="wssf-fb-link" href="'.$post['link'].'">'.$linkable_content.'</a>';
+		$content .= '<a href="'.$post['link'].'" class="wssf-fb-link">'.$linkable_content.'</a>';
 	} else {
 		$content .= $linkable_content;
 	}
